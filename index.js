@@ -1,35 +1,83 @@
-const request = require("request");
+require("dotenv").config();
+const MongoDB = require("mongodb");
 const express = require("express");
+const MongoClient = MongoDB.MongoClient;
+const uri = "mongodb+srv://CreateStudio3360:hackking3089@cluster0.6o3ps.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
 
+var databasename = process["env"]["DATABASE_NAME_1"];
+var collectionname = process["env"]["COLLECTION_NAME_1"];
 const app = express();
-const expressWs = require('express-ws')(app);
 
-var connectionws = null;
-
-app.ws('/connection_1', function(ws, req) {
-    if (connectionws === null) {
-        console.log("new connection");
-        connectionws = ws;
-        ws.on('message', function(msg) {
-            ws.send(msg);
-        });
-        ws.on('close',() => {
-            console.log("connection closed");
-            connectionws = null;
-        });
+app.get("/whitelist-check", (req, res) => {
+    function sendincorrect() {
+        res.send("Fixed Your Headers");
     };
+    const allowedHeaders = ['fingerprint', 'syn-user-identifier', 'sentinel-fingerprint', 'proto-user-identifier', 'shadow_hardware', 'krnl-hwid', 'exploit-guid'];
+    const exploits = {
+        'fingerprint': 'ScriptWare',
+        'syn-user-identifier': 'Synapse X',
+        'proto-user-identifier': 'ProtoSmasher',
+        'shadow_hardware': 'Shadow',
+        'krnl-hwid': 'KRNL',
+        'sentinel-fingerprint': 'Sentinel',
+        'exploit-guid': 'Sirhurt'
+    };
+    let exploit;
+    let exploit2;
+    for (const header of allowedHeaders) {
+        if (req.headers[header]) {
+            exploit = req.headers[header];
+			exploit2 = header;
+        };
+    };
+    if (!exploit) {
+        sendincorrect();
+        return;
+    };
+    if (req.headers.logintoken === undefined) {sendincorrect(); return;};
+    if (req.headers.clientuuid === undefined) {sendincorrect(); return;};
+    MongoClient.connect(uri, function(err, client) {
+        if (err) throw err;
+        var dbo = client.db(databasename).collection(collectionname).find({ id: req.headers.logintoken }).toArray(function(err, result) {
+            if (err) throw err;
+            if (result[0] === undefined) {
+                res.send("Incorrect Login TOKEN!");
+            }else{
+                if (result[0]["whitelist_client"][0][1] === req.headers.clientuuid){
+                    console.log(exploit2);
+                    if (result[0]["whitelist_client"][0][2] === exploit){
+                        res.send("Correct!");
+                    }else{
+                        res.send("Incorrect Exploit UUID!");
+                    };
+                }else{
+                    res.send("Incorrect Client UUID!");
+                };
+            };
+        });
+    });
 });
 
-request({
-    headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'LoginToken': '1234',
-        'ClientUUID': 'E90E8C7D-B7DC-4A00-A799-19DD4A5A545E',
-        'Syn-Fingerprint': 'bab68b293d196a2a676a017f55f4ba141f297000ede488af5981966395aaa9391f21872d155bf80fe15ed8b1940644061b4c077299343425e6b7555e441a9d2f',
-        'Syn-User-Identifier': '2f2e17e6edd14f642f554cb45ad047272d4894e32d451fe27c0a961779cbf58960886098f63ee418d4a099f0374d008465d123d94a7b43dda32f4e1a2e7e8087'
-    },
-    uri: 'http://localhost:3000/whitelist-check',
-    method: 'GET'
-}, function (err, res, body) {
-    console.log(body);
+app.listen(3000,() => {
+    console.log("Server is running on port 3000");
 });
+
+/*/MongoClient.connect(uri, function(err, client) {
+    if (err) throw err;
+    var dbo = client.db(databasename).collection(collectionname).find({ name: "john doe2" }).toArray(function(err, result) {
+        if (err) throw err;
+        if (result[0] === undefined){
+            MongoClient.connect(uri, function(err, client) {
+                if (err) throw err;
+                var dbo = client.db(databasename).collection(collectionname).insertOne({name: "john doe2", age: "25"}, function(err, res) {
+                    if (err) throw err;
+                    console.log("1 document inserted");
+                    client.close();
+                });
+            });
+        }else{
+            console.log("User already exists");
+        };
+        client.close();
+    });
+});/*/
